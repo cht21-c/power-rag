@@ -1,0 +1,7 @@
+logs/
+__pycache__/
+*.pyc
+sdk_docs/
+.env
+camera_sdk_agent/drawings/
+sdk文档/

@@ -1,0 +1,24 @@
+# API keys & secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Qdrant local data (file mode)
+qdrant_data/
+
+# Chainlit
+.chainlit/
+.files/
+
+# IDE
+.vscode/
+.idea/
+
+# Conda
+.env/

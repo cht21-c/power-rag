@@ -1,0 +1,45 @@
+# ============================================================================
+# Power Plant RAG Agent - Dependencies
+# Target: Python 3.11
+# ============================================================================
+
+# --- Vector Database ---
+qdrant-client>=1.9.0
+
+# --- Embedding Model ---
+sentence-transformers>=3.0.0
+torch>=2.3.0
+
+# --- Semantic Chunking ---
+chonkie
+
+# --- BM25 / Hybrid Retrieval ---
+rank-bm25>=0.2.2
+
+# --- Agent Framework ---
+langgraph>=0.1.19
+langchain-core>=0.2.23
+langchain-openai>=0.1.0
+
+# --- Chat UI ---
+chainlit
+
+# --- Document Parsing ---
+pymupdf>=1.24.0
+beautifulsoup4>=4.12.0
+
+# --- OCR (for scanned PDFs) ---
+rapidocr-onnxruntime
+
+# --- MySQL Database ---
+sqlalchemy>=2.0
+pymysql>=1.1.0
+
+# --- Utilities ---
+python-dotenv>=1.0.0
+tqdm>=4.66.0
+
+# --- Security (等保三级) ---
+cryptography>=41.0.0
+pytest>=7.0.0
+pytest-asyncio>=0.21.0

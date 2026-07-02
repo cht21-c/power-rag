@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camera SDK RAG Agent v2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
+<style>
+:root {
+  --bg: #f8fafc; --card: #fff; --border: #e2e8f0;
+  --text: #1e293b; --text2: #64748b; --accent: #1a73e8;
+  --ok: #16a34a; --warn: #d97706; --err: #dc2626;
+  --input-bg: #fff; --hover: #f1f5f9; --shadow: 0 1px 3px rgba(0,0,0,.08);
+  --radius: 10px; --code-bg: #f0f4f8;
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); min-height:100vh; display:flex; }
+
+.login-wrap { display:flex; align-items:center; justify-content:center; width:100%; min-height:100vh; }
+.login-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  padding:48px 40px; width:420px; box-shadow:var(--shadow); text-align:center; }
+.login-card h1 { font-size:22px; margin-bottom:6px; color:var(--accent); }
+.login-card p { color:var(--text2); font-size:14px; margin-bottom:28px; }
+.login-card input { width:100%; padding:12px 16px; border:1px solid var(--border); border-radius:8px;
+  font-size:15px; background:var(--input-bg); outline:none; transition:.15s; }
+.login-card input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(26,115,232,.12); }
+.login-card button { width:100%; margin-top:16px; padding:12px; background:var(--accent); color:#fff;
+  border:none; border-radius:8px; font-size:15px; cursor:pointer; transition:.15s; }
+.login-card button:hover { opacity:.9; }
+.login-card .err { color:var(--err); font-size:13px; margin-top:12px; }
+
+.app { display:flex; width:100%; height:100vh; }
+.sidebar { width:240px; background:var(--card); border-right:1px solid var(--border);
+  padding:20px; display:flex; flex-direction:column; gap:16px; overflow-y:auto; }
+.sidebar h2 { font-size:16px; color:var(--accent); margin-bottom:4px; }
+.sidebar label { font-size:13px; color:var(--text2); display:block; margin-bottom:4px; }
+.sidebar select, .sidebar input[type=file] { width:100%; padding:8px; border:1px solid var(--border);
+  border-radius:6px; font-size:13px; background:var(--input-bg); }
+.sidebar .brand-item { padding:6px 10px; border-radius:6px; cursor:pointer; font-size:14px; }
+.sidebar .brand-item:hover { background:var(--hover); }
+.sidebar .brand-item.active { background:var(--accent); color:#fff; }
+.sidebar .upload-area { border:1.5px dashed var(--border); border-radius:8px; padding:16px;
+  text-align:center; font-size:12px; color:var(--text2); cursor:pointer; transition:.15s; }
+.sidebar .upload-area:hover { border-color:var(--accent); }
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.topbar { padding:12px 20px; border-bottom:1px solid var(--border); background:var(--card);
+  display:flex; align-items:center; justify-content:space-between; }
+.topbar .user { font-size:13px; color:var(--text2); }
+.topbar .user span { color:var(--accent); font-weight:600; }
+.chat { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px; scrollbar-width:none; }
+	.chat::-webkit-scrollbar { display:none; }
+.msg { max-width:78%; padding:12px 16px; border-radius:var(--radius); font-size:14px; line-height:1.6;
+  animation: fadeIn .2s ease; }
+.msg.user { align-self:flex-end; background:var(--accent); color:#fff; }
+.msg.assistant { align-self:flex-start; background:var(--card); border:1px solid var(--border); box-shadow:var(--shadow); }
+.msg .meta { font-size:11px; color:var(--text2); margin-bottom:4px; display:flex; gap:8px; align-items:center; }
+.msg .meta .route { padding:1px 8px; border-radius:10px; font-size:10px; }
+.route-rag { background:#dbeafe; color:#1e40af; }
+.route-mysql { background:#fef3c7; color:#92400e; }
+.route-clarify { background:#fce7f3; color:#9d174d; }
+.msg .source { margin-top:8px; padding:6px 10px; background:var(--code-bg); border-radius:6px;
+  font-size:12px; color:var(--text2); }
+.signal { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+.signal-ok { background:var(--ok); }
+.signal-warn { background:var(--warn); }
+.signal-err { background:var(--err); }
+.input-area { padding:14px 20px; border-top:1px solid var(--border); background:var(--card);
+  display:flex; gap:10px; align-items:center; }
+.input-area input { flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:8px;
+  font-size:14px; background:var(--input-bg); outline:none; }
+.input-area input:focus { border-color:var(--accent); }
+.input-area button { padding:10px 20px; background:var(--accent); color:#fff; border:none;
+  border-radius:8px; cursor:pointer; font-size:14px; }
+	.input-area button:hover { opacity:.9; }
+	.new-chat-btn { width:100%; padding:10px; background:var(--accent); color:#fff;
+	  border:none; border-radius:8px; cursor:pointer; font-size:14px; transition:.15s; }
+	.new-chat-btn:hover { opacity:.9; }
+.audit-panel { position:fixed; right:0; top:0; width:360px; height:100vh; background:var(--card);
+  border-left:1px solid var(--border); padding:20px; overflow-y:auto; display:none; z-index:10; }
+.audit-panel.show { display:block; }
+.audit-panel h3 { font-size:16px; margin-bottom:12px; }
+.audit-panel .entry { padding:8px 10px; border-radius:6px; background:var(--code-bg); margin-bottom:8px;
+  font-size:12px; border-left:3px solid var(--accent); }
+.audit-panel .entry .ts { color:var(--text2); }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+/* ---- markdown 渲染样式（marked.js 输出的标准标签） ---- */
+.msg .text p { margin: 4px 0; }
+.msg .text p:first-child { margin-top: 0; }
+.msg .text p:last-child { margin-bottom: 0; }
+.msg .text ul, .msg .text ol { margin: 6px 0 6px 20px; }
+.msg .text li { margin: 3px 0; }
+.msg .text li > p { margin: 0; display: inline; }
+.msg .text h1, .msg .text h2, .msg .text h3 { margin: 12px 0 6px; line-height: 1.4; }
+.msg .text h1 { font-size: 17px; }
+.msg .text h2 { font-size: 16px; }
+.msg .text h3 { font-size: 15px; }
+.msg .text hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.msg .text code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px;
+  font-size: 13px; font-family: "SFMono-Regular", Consolas, Menlo, monospace; }
+.msg .text pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px;
+  overflow-x: auto; margin: 8px 0; }
+.msg .text pre code { background: none; padding: 0; }
+.msg .text blockquote { border-left: 3px solid var(--border); padding-left: 10px;
+  color: var(--text2); margin: 8px 0; }
+.msg .text table { border-collapse: collapse; margin: 8px 0; font-size: 13px; width: 100%; }
+.msg .text th, .msg .text td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+.msg .text th { background: var(--code-bg); }
+.msg .text a { color: var(--accent); text-decoration: underline; }
+.msg.user .text a { color: #fff; }
+.msg .text strong { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div id="loginPage" class="login-wrap">
+  <div class="login-card">
+    <h1>RAG Agent</h1>
+    <p>电厂智能运维知识库 v2.0</p>
+    <input id="keyInput" type="password" placeholder="API Key (开发模式留空即可)" />
+    <button onclick="doLogin()">登录</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="appPage" class="app" style="display:none">
+  <div class="sidebar">
+    <h2>RAG Console</h2>
+    <div>
+      <label>上传文档 (管理员)</label>
+      <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        点击或拖拽 PDF / MD 文件
+      </div>
+      <input type="file" id="fileInput" multiple accept=".pdf,.md,.txt,.html" style="display:none"
+             onchange="doUpload()" />
+      <div id="uploadStatus" style="font-size:11px;margin-top:6px;color:var(--text2)"></div>
+    </div>
+	    <button class="new-chat-btn" onclick="newChat()">➕ 新建对话</button>
+    <div style="margin-top:auto;font-size:12px;color:var(--text2)">
+      <button onclick="showAudit()" style="background:none;border:1px solid var(--border);border-radius:6px;
+        padding:6px 12px;cursor:pointer;font-size:12px;width:100%;">审计追踪</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div style="font-weight:600">RAG Agent</div>
+      <div class="user" id="userInfo"></div>
+    </div>
+    <div class="chat" id="chatBox">
+      <div class="msg assistant">
+        <div class="text"><b>RAG Agent 已就绪!</b><br><br>
+        向量库: <span id="qdrantCount">--</span> chunks<br><br>
+        <b>试试这些:</b><br>
+        - 如何初始化海康相机?<br>
+        - 下载锅炉给水泵系统图<br>
+        - 循环水泵维护规程</div>
+      </div>
+    </div>
+    <div class="input-area">
+      <input id="queryInput" placeholder="输入问题..." onkeydown="if(event.key==='Enter')doChat()" />
+      <button onclick="doChat()">发送</button>
+    </div>
+  </div>
+</div>
+
+<div class="audit-panel" id="auditPanel">
+  <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+    <h3>审计追踪</h3>
+    <button onclick="closeAudit()" style="background:none;border:none;font-size:18px;cursor:pointer">&times;</button>
+  </div>
+  <input id="traceInput" placeholder="输入 trace_id 查询" style="width:100%;padding:8px;border:1px solid var(--border);
+    border-radius:6px;margin-bottom:12px;font-size:13px" onkeydown="if(event.key==='Enter')queryAudit()" />
+  <button onclick="queryAudit()" style="width:100%;padding:8px;background:var(--accent);color:#fff;border:none;
+    border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:12px">查询</button>
+  <div id="auditResult"></div>
+</div>
+
+<script>
+// ---- markdown 渲染：交给 marked.js 解析，DOMPurify 净化后再插入 DOM ----
+marked.setOptions({ breaks: true, gfm: true });
+
+function mdToHtml(text){
+  if(!text) return '';
+  const raw = marked.parse(text);
+  return DOMPurify.sanitize(raw);
+}
+
+const API = 'http://localhost:8765/api';
+let token = '', user = null, messages = [], lastTraceId = '';
+
+async function doLogin() {
+  const key = document.getElementById('keyInput').value.trim();
+  document.getElementById('loginErr').textContent = '';
+  try {
+    const r = await fetch(API+'/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key})});
+    if(!r.ok){const e=await r.json();throw new Error(e.detail||'Login failed');}
+    const d=await r.json(); token=d.token; user=d;
+    document.getElementById('loginPage').style.display='none';
+    document.getElementById('appPage').style.display='flex';
+    document.getElementById('userInfo').innerHTML='<span>'+user.user_id+'</span> | '+user.role;
+    loadConfig();
+  }catch(e){document.getElementById('loginErr').textContent=e.message;}
+}
+
+function loadConfig(){
+  fetch(API+'/config').then(function(r){return r.json();}).then(function(d){
+    document.getElementById('qdrantCount').textContent = d.qdrant_points || '--';
+  }).catch(function(e){ console.error(e); });
+}
+
+function newChat(){
+  messages = [];
+  var box = document.getElementById('chatBox');
+  box.innerHTML = '<div class="msg assistant"><div class="text">'
+    +'<b>RAG Agent 已就绪!</b><br><br>'
+    +'向量库: <span id="qdrantCount">--</span> chunks<br><br>'
+    +'<b>试试这些:</b><br>'
+    +'- 如何初始化海康相机?<br>'
+    +'- 下载锅炉给水泵系统图<br>'
+    +'- 循环水泵维护规程'
+    +'</div></div>';
+  loadConfig();
+}
+
+async function doChat(){
+  const inp=document.getElementById('queryInput'); const q=inp.value.trim(); if(!q)return; inp.value='';
+  appendMsg('user',q); messages.push({role:'user',content:q});
+  const box=document.getElementById('chatBox'); const msgDiv=addMsgDiv('assistant');
+  const textSpan=msgDiv.querySelector('.text'); const metaSpan=msgDiv.querySelector('.meta');
+  try{
+    const r=await fetch(API+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:q,messages:messages})});
+    const reader=r.body.getReader(); const dec=new TextDecoder(); let buf='',full='';
+    while(true){
+      const{done,value}=await reader.read(); if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split('\n'); buf=lines.pop();
+      for(const l of lines){if(!l.startsWith('data: '))continue;
+        try{const ev=JSON.parse(l.slice(6));
+          switch(ev.type){
+            case'route':metaSpan.innerHTML=renderMeta(ev.route,ev.confidence);break;
+            case'token':full+=ev.text;textSpan.innerHTML=mdToHtml(full);box.scrollTop=box.scrollHeight;break;
+            case'sources':const sd=msgDiv.querySelector('.source');if(sd)sd.innerHTML=ev.items.map(function(s){var label=s.file;if(s.page&&s.page!=='0')label+=' (p.'+s.page+')';return'<span>'+label+'</span>';}).join(' | ');break;
+            case'clarify':full=ev.text;textSpan.innerHTML=mdToHtml(full);metaSpan.innerHTML=renderMeta('clarify',0);break;
+            case'error':textSpan.textContent='[Error] '+ev.text;break;
+            case'done':lastTraceId=ev.trace_id||'';break;
+          }}catch(e){}
+      }
+    }
+    if(full)messages.push({role:'assistant',content:full});
+  }catch(e){textSpan.textContent='[Request Failed] '+e.message;}
+}
+
+function renderMeta(route,conf){
+  const cls=route==='rag'?'route-rag':route==='mysql'?'route-mysql':'route-clarify';
+  const cn=route==='rag'?'RAG':route==='mysql'?'MySQL':route==='clarify'?'Clarify':'Intent';
+  let sig=''; const c=conf||0;
+  if(c>=0.8)sig='<span class="signal signal-ok"></span>';
+  else if(c>=0.5)sig='<span class="signal signal-warn"></span>';
+  else sig='<span class="signal signal-err"></span>';
+  return sig+' <span class="route '+cls+'">'+cn+'</span> '+(conf?'conf:'+(conf*100).toFixed(0)+'%':'');
+}
+
+function addMsgDiv(role){
+  const box=document.getElementById('chatBox');
+  const div=document.createElement('div'); div.className='msg '+role;
+  div.innerHTML='<div class="meta"></div><div class="text"></div><div class="source"></div><div class="trace-link"></div>';
+  box.appendChild(div); box.scrollTop=box.scrollHeight; return div;
+}
+
+function appendMsg(role,text){const d=addMsgDiv(role);d.querySelector('.text').innerHTML=mdToHtml(text);}
+
+async function doUpload(){
+  const files=document.getElementById('fileInput').files; if(!files.length)return;
+  const st=document.getElementById('uploadStatus'); st.textContent='Uploading...';
+  const fd=new FormData(); for(const f of files)fd.append('files',f);
+  try{
+    const r=await fetch(API+'/ingest',{method:'POST',body:fd}); const d=await r.json();
+    st.textContent='OK: '+d.success+'/'+d.total+' files'; setTimeout(loadConfig,2000);
+  }catch(e){st.textContent='Failed: '+e.message;}
+}
+
+function showAudit(traceId){
+  document.getElementById('auditPanel').classList.add('show');
+  if(traceId){document.getElementById('traceInput').value=traceId;queryAudit();}
+}
+
+function closeAudit(){document.getElementById('auditPanel').classList.remove('show');}
+
+async function queryAudit(){
+  const tid=document.getElementById('traceInput').value.trim(); if(!tid)return;
+  const div=document.getElementById('auditResult'); div.innerHTML='Querying...';
+  try{
+    const r=await fetch(API+'/audit/trace/'+tid); const d=await r.json();
+    if(!d.records||!d.records.length){div.innerHTML='<p style="color:var(--text2)">No records found</p>';return;}
+    div.innerHTML='<p style="font-size:13px;margin-bottom:8px">'+d.count+' records</p>'
+      +d.records.map(r=>'<div class="entry"><span class="ts">'+r.timestamp+'</span><br><b>'+r.node_name+'</b> '
+        +(r.status||'')+' '+(r.latency_ms!=null?r.latency_ms+'ms':'')
+        +(r.route_decision?' -> '+r.route_decision:'')+'</div>').join('');
+  }catch(e){div.innerHTML='Query failed: '+e.message;}
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const area=document.querySelector('.upload-area');
+  if(!area)return;
+  area.addEventListener('dragover',e=>{e.preventDefault();area.style.borderColor='var(--accent)';});
+  area.addEventListener('dragleave',()=>area.style.borderColor='var(--border)');
+  area.addEventListener('drop',e=>{e.preventDefault();area.style.borderColor='var(--border)';
+    document.getElementById('fileInput').files=e.dataTransfer.files;doUpload();});
+});
+</script>
+</body>
+</html>
